@@ -376,13 +376,17 @@ def _sting(params):
     for key, value in list(dict_headers.items()):
         request.add_header(key, value)
 
-    if url.lower().startswith("https://") and hasattr(ssl, '_create_unverified_context'):
-        context = ssl._create_unverified_context()
-        response = urlopen(request, context=context)
-    else:
-        response = urlopen(request)
-
-    response.read()
+    try:
+        if url.lower().startswith("https://") and hasattr(ssl, '_create_unverified_context'):
+            context = ssl._create_unverified_context()
+            response = urlopen(request, context=context)
+        else:
+            response = urlopen(request)
+        response.read()
+    except Exception as e:
+        sys.stderr.write("HTTP Error received while stinging URL: %s\n" % str(e))
+        sys.stderr.write("    Stinging may have resulted in uninteded results, proceeding...\n")
+        return None
 
 
 def _attack(params):
