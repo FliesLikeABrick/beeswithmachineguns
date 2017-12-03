@@ -110,6 +110,8 @@ def _get_region(zone):
     return zone if 'gov' in zone else zone[:-1] # chop off the "d" in the "us-east-1d" to get the "Region"
 
 def _get_security_group_id(connection, security_group_name, subnet):
+    """Takes a security group name and returns the ID.  If the name cannot be found, the name will be attempted
+    as an ID.  The first group found by this name or ID will be used."""
     if not security_group_name:
         print('The bees need a security group to run under. Need to open a port from where you are to the target subnet.')
         return
@@ -117,8 +119,10 @@ def _get_security_group_id(connection, security_group_name, subnet):
     security_groups = connection.get_all_security_groups(filters={'group-name': [security_group_name]})
 
     if not security_groups:
-        print('The bees need a security group to run under. The one specified was not found.')
-        return
+        security_groups = connection.get_all_security_groups(filters={'group-id': [security_group_name]})
+        if not security_groups:
+            print('The bees need a security group to run under. The one specified was not found.')
+            return
 
     return security_groups[0].id if security_groups else None
 
@@ -452,12 +456,12 @@ def _attack(params):
             options += ' -A %s' % params['basic_auth']
 
         params['options'] = options
-        # substrings to use for fgrep to perform remote output filtering
+        # substrings to use for grep to perform remote output filtering
         # resolves issue #194, too much data sent over SSH control channel to BWMG
         # any future statistics parsing that requires more output from ab
         # may need this line altered to include other patterns
         params['output_filter_patterns'] = '\n'.join(['Time per request:', 'Requests per second: ', 'Failed requests: ', 'Connect: ', 'Receive: ', 'Length: ', 'Exceptions: ', 'Complete requests: ', 'HTTP/1.1'])
-        benchmark_command = 'ab -v 3 -r -n %(num_requests)s -c %(concurrent_requests)s %(options)s "%(url)s" 2>/dev/null | fgrep -F "%(output_filter_patterns)s"' % params
+        benchmark_command = 'ab -v 3 -r -n %(num_requests)s -c %(concurrent_requests)s %(options)s "%(url)s" 2>/dev/null | grep -F "%(output_filter_patterns)s"' % params
         print(benchmark_command)
         stdin, stdout, stderr = client.exec_command(benchmark_command)
 
